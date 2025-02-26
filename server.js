@@ -9,6 +9,7 @@ app.use(cors());
 app.use(fileUpload());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
+const BUCKET_NAME = "srs-bucket";
 
 // Get a question by ID
 app.get("/question/:id", async (req, res) => {
@@ -116,14 +117,28 @@ app.post("/questionsNextTest", async (req, res) => {
 app.post("/questions", async (req, res) => {
   const { question, difficulty, answer, userId, genre, questionType, choices } = req.body;
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("questions")
-    .insert([{ question, difficulty, answer, userId, genre, questionType, choices }]);
+    .insert(
+      {
+        question,
+        difficulty,
+        answer,
+        created: new Date(),
+        userId,
+        genre,
+        questionType,
+        choices,
+      },
+      { returning: "representation" } // Ensures we get the inserted row
+    )
+    .select("id"); // Retrieve the ID of the inserted row
 
   if (error) return res.status(400).json({ error: error.message });
 
-  res.json("Created Successfully");
+  res.json({ message: "Created Successfully", id: data[0].id });
 });
+
 
 // Delete a question
 app.delete("/questions/:id", async (req, res) => {
@@ -197,37 +212,36 @@ app.put("/lists/:listName", async (req, res) => {
   res.json("Edition happened successfully");
 });
 
-// Upload an image
 app.put("/upload/:questionId", async (req, res) => {
   const { questionId } = req.params;
-  const { data } = req.files.image;
+  const file = req.files?.image;
 
-  const { error } = await supabase
-    .from("questions")
-    .update({ img: data })
-    .eq("id", questionId);
+  if (!file) return res.status(400).json({ error: "No image uploaded" });
+
+  const filePath = `questions/${questionId}.jpg`;
+
+  const { error } = await supabase.storage.from(BUCKET_NAME).upload(filePath, file.data, {
+    contentType: file.mimetype,
+    upsert: true, // Overwrites if file exists
+  });
 
   if (error) return res.status(400).json({ error: error.message });
 
-  res.json("Uploaded Successfully");
+  const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
+
+  res.json({ message: "Uploaded Successfully", url: data.publicUrl });
 });
 
-// Get question image
+// Get question image URL
 app.get("/questionsImg/:questionId", async (req, res) => {
   const { questionId } = req.params;
+  const filePath = `questions/${questionId}.jpg`;
 
-  const { data, error } = await supabase
-    .from("questions")
-    .select("img")
-    .eq("id", questionId)
-    .single();
+  const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
 
-  if (error) return res.status(400).json({ error: error.message });
+  if (!data.publicUrl) return res.status(404).json({ error: "Image not found" });
 
-  if (!data.img) return res.status(404).json({ error: "Image not found" });
-
-  res.writeHead(200, { "Content-Type": "image/jpeg" });
-  res.end(data.img);
+  res.json({ url: data.publicUrl });
 });
 
 app.listen(3001, () => console.log("Server running on port 3001"));
