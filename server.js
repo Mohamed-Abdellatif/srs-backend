@@ -1,260 +1,233 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const cors = require("cors");
-const knex = require("knex");
-
-const fileUpload = require("express-fileupload");
-
-const db = knex({
-  client: "pg",
-  connection: {
-    host: "127.0.0.1",
-    port: 5432,
-    user: "postgres",
-    password: "123456",
-    database: "srs",
-  },
-});
+import express from "express";
+import cors from "cors";
+import fileUpload from "express-fileupload";
+import supabase from "./supabaseClient.js";
 
 const app = express();
 
-app.use(bodyParser.json());
 app.use(cors());
 app.use(fileUpload());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-
-app.get("/question/:id", (req, res) => {
+// Get a question by ID
+app.get("/question/:id", async (req, res) => {
   const { id } = req.params;
-  db.select("*")
+  const { data, error } = await supabase
     .from("questions")
-    .where({ id })
-    .then((question) => {
-      if (question.length) {
-        res.json(question[0]);
-      } else {
-        res.status(400).json("Not Found");
-      }
-    })
-    .catch((err) => res.status(400).json("Error getting question"));
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json(data);
 });
 
-app.put("/questions/:id", (req, res) => {
+// Update a question
+app.put("/questions/:id", async (req, res) => {
   const { id } = req.params;
-  const {
-    question,
-    difficulty,
-    answer,
-    genre,
-    questionType,
-    choices,
-    lastTested,
-    nextTest,
-    interval,
-    stability,
-  } = req.body;
-  db.select("*")
+  const updateData = req.body;
+
+  const { error } = await supabase
     .from("questions")
-    .where({ id })
-    .update({
-      question: question,
-      difficulty: difficulty,
-      answer: answer,
-      genre: genre,
-      questionType: questionType,
-      choices: choices,
-      lastTested: lastTested,
-      nextTest: nextTest,
-      interval: interval,
-      stability: stability,
-    })
-    .then(res.json("Edition happened successfully"));
+    .update(updateData)
+    .eq("id", id);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json("Edition happened successfully");
 });
 
-app.post("/getQuestionsById", (req, res) => {
+// Get multiple questions by IDs
+app.post("/getQuestionsById", async (req, res) => {
   const { questionsList } = req.body;
-  db.select("*")
-    .from("questions")
 
-    .then((questions) => {
-      const qarray = [].concat(
-        questionsList.map((id) =>
-          questions.filter((question) => question.id === id)
-        )
-      );
-      res.json(qarray.map((question) => question[0]));
-    })
-    .catch((err) => res.status(400).json("Error getting questions"));
+  const { data, error } = await supabase
+    .from("questions")
+    .select("*")
+    .in("id", questionsList);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json(data);
 });
 
-app.post("/getQuestions", (req, res) => {
-  const {questionsNumber, userId } = req.body;
-  db.select("*")
+// Get questions by userId with limit
+app.post("/getQuestions", async (req, res) => {
+  const { questionsNumber, userId } = req.body;
+
+  const { data, error } = await supabase
     .from("questions")
-    .where("userId", userId)
-    .then((questions) => {
-      if (questions.length > questionsNumber) {
-        res.json(questions.slice(0, questionsNumber));
-      } else {
-        res.json(questions);
-      }
-    })
-    .catch((err) => res.status(400).json("Error getting questions"));
+    .select("*")
+    .eq("userId", userId)
+    .limit(questionsNumber);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json(data);
 });
 
-app.post("/searchQuestions/:question", (req, res) => {
+// Search questions by content
+app.post("/searchQuestions/:question", async (req, res) => {
   const { question } = req.params;
   const { userId } = req.body;
-  db.select("*")
+
+  const { data, error } = await supabase
     .from("questions")
-    .where("userId", userId)
-    .whereRaw(`LOWER(question) LIKE ?`, [`%${question.toLowerCase()}%`])
-    .then((questions) => res.json(questions))
-    .catch((err) => res.status(400).json(err));
+    .select("*")
+    .eq("userId", userId)
+    .ilike("question", `%${question}%`);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json(data);
 });
 
-app.post("/questionsLength", (req, res) => {
+// Get number of questions for a user
+app.post("/questionsLength", async (req, res) => {
   const { userId } = req.body;
-  db.select("*")
+
+  const { data, error } = await supabase
     .from("questions")
-    .where("userId", userId)
-    .then((questions) => res.json(questions.length))
-    .catch((err) => res.status(400).json("Error getting questions"));
+    .select("*")
+    .eq("userId", userId);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json(data.length);
 });
 
-app.post("/questionsNextTest", (req, res) => {
+// Get next test dates for user
+app.post("/questionsNextTest", async (req, res) => {
   const { userId } = req.body;
-  db.select("nextTest")
+
+  const { data, error } = await supabase
     .from("questions")
-    .where("userId", userId)
-    .then((questions) => res.json(questions))
-    .catch((err) => res.status(400).json("Error getting questions"));
+    .select("nextTest")
+    .eq("userId", userId);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json(data);
 });
 
-app.post("/questions", (req, res) => {
-  const { question, difficulty, answer, userId, genre, questionType, choices } =
-    req.body;
-  
-  db("questions")
-    .insert({
-      question: question,
-      difficulty: difficulty,
-      answer: answer,
-      created: new Date(),
-      userId: userId,
-      genre: genre,
-      questionType: questionType,
-      choices: choices,
-      
-    })
-    .then(() => res.json("Created Successfully"))
-    .catch((err) => res.status(400).json("Unable to create the question"));
+// Create a question
+app.post("/questions", async (req, res) => {
+  const { question, difficulty, answer, userId, genre, questionType, choices } = req.body;
+
+  const { error } = await supabase
+    .from("questions")
+    .insert([{ question, difficulty, answer, userId, genre, questionType, choices }]);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json("Created Successfully");
 });
 
-app.delete("/questions/:id", (req, res) => {
+// Delete a question
+app.delete("/questions/:id", async (req, res) => {
   const { id } = req.params;
-  db("questions")
-    .returning("*")
-    .where({ id })
-    .del()
-    .then(() => res.json("Deleted Successfully"))
-    .catch((err) => res.status(400).json(err));
+
+  const { error } = await supabase
+    .from("questions")
+    .delete()
+    .eq("id", id);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json("Deleted Successfully");
 });
-app.post("/lists", (req, res) => {
+
+// Create a list
+app.post("/lists", async (req, res) => {
   const { listName, userId, questions } = req.body;
-  db("lists")
-    .insert({
-      listName: listName,
-      userId: userId,
-      questions: questions,
-    })
-    .then((list) => res.status(200).json("Created Successfully"))
-    .catch((err) => {
-      if (
-        err.message ===
-        'insert into "lists" ("listName", "questions", "userId") values ($1, DEFAULT, DEFAULT) - duplicate key value violates unique constraint "lists_listname_key"'
-      ) {
-        res.json("This list already exists");
-      } else {
-        res.json(err.message);
-      }
-    });
+
+  const { error } = await supabase
+    .from("lists")
+    .insert([{ listName, userId, questions }]);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json("Created Successfully");
 });
 
-app.post("/getListQuestions", (req, res) => {
+// Get questions from a list
+app.post("/getListQuestions", async (req, res) => {
   const { listName, userId } = req.body;
-  db.select("questions")
+
+  const { data, error } = await supabase
     .from("lists")
-    .where("listName", listName)
-    .where("userId", userId)
-    .then((list) => res.json(list))
-    .catch((err) => res.status(400).json("Error getting questions"));
-});
-app.post("/getLists", (req, res) => {
-  const  userId  = '7lliXdMfL3bDjnEq70rqGKgO5cE3';
-  db.select("*")
-    .from("lists")
-    .where("userId", userId)
-    .then((lists) => res.json(lists))
-    .catch((err) => res.status(400).json("Error getting lists"));
+    .select("questions")
+    .eq("listName", listName)
+    .eq("userId", userId);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json(data);
 });
 
-app.put("/lists/:listName", (req, res) => {
+// Get all lists for a user
+app.post("/getLists", async (req, res) => {
+  const { userId } = req.body;
+
+  const { data, error } = await supabase
+    .from("lists")
+    .select("*")
+    .eq("userId", userId);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json(data);
+});
+
+// Update a list
+app.put("/lists/:listName", async (req, res) => {
   const { listName } = req.params;
   const { newListName, userId, questions } = req.body;
-  db.select("*")
+
+  const { error } = await supabase
     .from("lists")
-    .where("listName", listName)
-    .where("userId", userId)
-    .update({
-      listName: newListName,
-      questions: JSON.stringify(questions),
-    })
-    .then(res.json("Edition happened successfully"));
+    .update({ listName: newListName, questions })
+    .eq("listName", listName)
+    .eq("userId", userId);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json("Edition happened successfully");
 });
 
-const { Pool } = require('pg');
-const pool = new Pool({
-  host: "127.0.0.1",
-  port: 5432,
-  user: "postgres",
-  password: "123654",
-  database: "srs",
+// Upload an image
+app.put("/upload/:questionId", async (req, res) => {
+  const { questionId } = req.params;
+  const { data } = req.files.image;
+
+  const { error } = await supabase
+    .from("questions")
+    .update({ img: data })
+    .eq("id", questionId);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json("Uploaded Successfully");
 });
 
+// Get question image
+app.get("/questionsImg/:questionId", async (req, res) => {
+  const { questionId } = req.params;
 
+  const { data, error } = await supabase
+    .from("questions")
+    .select("img")
+    .eq("id", questionId)
+    .single();
 
-app.post('/upload/:question', async (req, res) => {
-  const { name, data } = req.files.image;
-  const { question } = req.params;
-  db("questions")
-    .insert({
-      name:name,
-      data:data,
-      question:question   
-    })
-    .then((image) => res.status(200).json("Uploaded Successfully"))
-    .catch((err)=>  res.status(400).json(err))
+  if (error) return res.status(400).json({ error: error.message });
+
+  if (!data.img) return res.status(404).json({ error: "Image not found" });
+
+  res.writeHead(200, { "Content-Type": "image/jpeg" });
+  res.end(data.img);
 });
 
-app.get('/images/:question', async (req, res) => {
-  const {question} = req.params;
-  const result = await pool.query(
-    'SELECT data FROM images WHERE question = $1',
-    [question]
-  );
-  if (result.rows.length > 0) {
-    const data = result.rows[0].data;
-    res.writeHead(200, {
-      'Content-Type': 'image/jpeg',
-      'Content-Length': data.length,
-    });
-    res.end(data);
-  } else {
-    res.json("no image");
-  }
-});
-
-
-app.listen(3001, () => {
-  console.log("running");
-});
+app.listen(3001, () => console.log("Server running on port 3001"));
