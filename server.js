@@ -222,15 +222,24 @@ app.put("/upload/:questionId", async (req, res) => {
 
   const { error } = await supabase.storage.from(BUCKET_NAME).upload(filePath, file.data, {
     contentType: file.mimetype,
-    upsert: true, // Overwrites if file exists
+    upsert: true,
   });
 
   if (error) return res.status(400).json({ error: error.message });
 
   const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
+  const imageUrl = data.publicUrl;
 
-  res.json({ message: "Uploaded Successfully", url: data.publicUrl });
+  const { error: updateError } = await supabase
+    .from("questions")
+    .update({ img: true })
+    .eq("id", questionId);
+
+  if (updateError) return res.status(400).json({ error: updateError.message });
+
+  res.json({ message: "Uploaded Successfully", url: imageUrl });
 });
+
 
 // Get question image URL
 app.get("/questionsImg/:questionId", async (req, res) => {
