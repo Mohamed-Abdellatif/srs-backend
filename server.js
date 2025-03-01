@@ -238,7 +238,7 @@ app.put("/upload/:questionId", async (req, res) => {
 
   if (updateError) return res.status(400).json({ error: updateError.message });
 
-  res.json({ message: "Uploaded Successfully", url: imageUrl });
+  res.json({ message: "Uploaded Successfully"});
 });
 
 
