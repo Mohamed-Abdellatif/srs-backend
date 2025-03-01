@@ -125,6 +125,7 @@ app.post("/questions", async (req, res) => {
         difficulty,
         answer,
         created: new Date(),
+        nextTest: new Date(),
         userId,
         genre,
         questionType,
