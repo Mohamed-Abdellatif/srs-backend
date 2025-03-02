@@ -115,7 +115,7 @@ app.post("/questionsNextTest", async (req, res) => {
 
 // Create a question
 app.post("/questions", async (req, res) => {
-  const { question, difficulty, answer, userId, genre, questionType, choices } =
+  const { question, difficulty, answer, userId, genre, questionType, choices,created,nextTest } =
     req.body;
 
   const { data, error } = await supabase
