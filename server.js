@@ -202,7 +202,7 @@ app.put("/lists/:listId", async (req, res) => {
   const { error } = await supabase
     .from("lists")
     .update({ listName: newListName, questions })
-    .eq("listId", listId)
+    .eq("id", listId)
     .eq("userId", userId);
 
   if (error) return res.status(400).json({ error: error.message });
