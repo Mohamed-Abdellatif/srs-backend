@@ -195,7 +195,7 @@ app.post("/getLists", async (req, res) => {
 });
 
 // Update a list
-app.put("/lists/:listName", async (req, res) => {
+app.put("/lists/:listId", async (req, res) => {
   const { listId } = req.params;
   const { newListName, userId, questions } = req.body;
 
