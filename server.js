@@ -196,13 +196,13 @@ app.post("/getLists", async (req, res) => {
 
 // Update a list
 app.put("/lists/:listName", async (req, res) => {
-  const { listName } = req.params;
+  const { listId } = req.params;
   const { newListName, userId, questions } = req.body;
 
   const { error } = await supabase
     .from("lists")
     .update({ listName: newListName, questions })
-    .eq("listName", listName)
+    .eq("listId", listId)
     .eq("userId", userId);
 
   if (error) return res.status(400).json({ error: error.message });
