@@ -115,7 +115,8 @@ app.post("/questionsNextTest", async (req, res) => {
 
 // Create a question
 app.post("/questions", async (req, res) => {
-  const { question, difficulty, answer, userId, genre, questionType, choices } = req.body;
+  const { question, difficulty, answer, userId, genre, questionType, choices } =
+    req.body;
 
   const { data, error } = await supabase
     .from("questions")
@@ -140,15 +141,11 @@ app.post("/questions", async (req, res) => {
   res.json({ message: "Created Successfully", id: data[0].id });
 });
 
-
 // Delete a question
 app.delete("/questions/:id", async (req, res) => {
   const { id } = req.params;
 
-  const { error } = await supabase
-    .from("questions")
-    .delete()
-    .eq("id", id);
+  const { error } = await supabase.from("questions").delete().eq("id", id);
 
   if (error) return res.status(400).json({ error: error.message });
 
@@ -221,15 +218,14 @@ app.put("/upload/:questionId", async (req, res) => {
 
   const filePath = `questions/${questionId}.jpg`;
 
-  const { error } = await supabase.storage.from(BUCKET_NAME).upload(filePath, file.data, {
-    contentType: file.mimetype,
-    upsert: true,
-  });
+  const { error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .upload(filePath, file.data, {
+      contentType: file.mimetype,
+      upsert: true,
+    });
 
   if (error) return res.status(400).json({ error: error.message });
-
-  const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
-  const imageUrl = data.publicUrl;
 
   const { error: updateError } = await supabase
     .from("questions")
@@ -238,9 +234,8 @@ app.put("/upload/:questionId", async (req, res) => {
 
   if (updateError) return res.status(400).json({ error: updateError.message });
 
-  res.json({ message: "Uploaded Successfully"});
+  res.json({ message: "Uploaded Successfully" });
 });
-
 
 // Get question image URL
 app.get("/questionsImg/:questionId", async (req, res) => {
@@ -249,7 +244,8 @@ app.get("/questionsImg/:questionId", async (req, res) => {
 
   const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
 
-  if (!data.publicUrl) return res.status(404).json({ error: "Image not found" });
+  if (!data.publicUrl)
+    return res.status(404).json({ error: "Image not found" });
 
   res.json({ url: data.publicUrl });
 });
