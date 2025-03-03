@@ -236,6 +236,18 @@ app.put("/upload/:questionId", async (req, res) => {
 
   res.json({ message: "Uploaded Successfully" });
 });
+app.delete("/deleteImage/:questionId", async (req, res) => {
+  const { questionId } = req.params;
+
+  const filePath = `questions/${questionId}.jpg`;
+  const { error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .remove(filePath);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json({ message: "Deleted Successfully" });
+});
 
 // Get question image URL
 app.get("/questionsImg/:questionId", async (req, res) => {
