@@ -144,12 +144,40 @@ app.post("/questions", async (req, res) => {
 // Delete a question
 app.delete("/questions/:id", async (req, res) => {
   const { id } = req.params;
-
-  const { error } = await supabase.from("questions").delete().eq("id", id);
-
-  if (error) return res.status(400).json({ error: error.message });
-
-  res.json("Deleted Successfully");
+  
+  try {
+    // First, find all lists containing this question
+    const { data: lists, error: listsError } = await supabase
+      .from("lists")
+      .select("id, questions")
+      .contains("questions", [id]);
+    
+    if (listsError) throw listsError;
+    
+    // Update each list to remove the question ID
+    for (const list of lists) {
+      const updatedQuestions = list.questions.filter(questionId => questionId !== id);
+      
+      const { error: updateError } = await supabase
+        .from("lists")
+        .update({ questions: updatedQuestions })
+        .eq("id", list.id);
+      
+      if (updateError) throw updateError;
+    }
+    
+    // Now delete the question
+    const { error: deleteError } = await supabase
+      .from("questions")
+      .delete()
+      .eq("id", id);
+    
+    if (deleteError) throw deleteError;
+    
+    res.json("Deleted Successfully");
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
 });
 
 // Create a list
