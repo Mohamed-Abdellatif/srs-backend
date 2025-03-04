@@ -54,6 +54,17 @@ app.post("/getQuestionsById", async (req, res) => {
   res.json(data);
 });
 
+app.post("/getIds", async (req, res) => {
+  const { data, error } = await supabase
+    .from("questions")
+    .select("id")
+    
+
+  if (error) return res.status(400).json({ error: error.message });
+  
+  res.json(data);
+});
+
 // Get questions by userId with limit
 app.post("/getQuestions", async (req, res) => {
   const { questionsNumber, userId } = req.body;
@@ -115,8 +126,17 @@ app.post("/questionsNextTest", async (req, res) => {
 
 // Create a question
 app.post("/questions", async (req, res) => {
-  const { question, difficulty, answer, userId, genre, questionType, choices,created,nextTest } =
-    req.body;
+  const {
+    question,
+    difficulty,
+    answer,
+    userId,
+    genre,
+    questionType,
+    choices,
+    created,
+    nextTest,
+  } = req.body;
 
   const { data, error } = await supabase
     .from("questions")
@@ -144,49 +164,21 @@ app.post("/questions", async (req, res) => {
 // Delete a question
 app.delete("/questions/:id", async (req, res) => {
   const { id } = req.params;
-  
-  try {
-    // First, find all lists containing this question
-    const { data: lists, error: listsError } = await supabase
-      .from("lists")
-      .select("id, questions")
-      .contains("questions", [id]);
-    
-    if (listsError) throw listsError;
-    
-    // Update each list to remove the question ID
-    for (const list of lists) {
-      const updatedQuestions = list.questions.filter(questionId => questionId !== id);
-      
-      const { error: updateError } = await supabase
-        .from("lists")
-        .update({ questions: updatedQuestions })
-        .eq("id", list.id);
-      
-      if (updateError) throw updateError;
-    }
-    
-    // Now delete the question
-    const { error: deleteError } = await supabase
-      .from("questions")
-      .delete()
-      .eq("id", id);
-    
-    if (deleteError) throw deleteError;
-    
-    res.json("Deleted Successfully");
-  } catch (error) {
-    return res.status(400).json({ error: error.message });
-  }
+
+  const { error } = await supabase.from("questions").delete().eq("id", id);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json("Deleted Successfully");
 });
 
 // Create a list
 app.post("/lists", async (req, res) => {
-  const { listName, userId, questions } = req.body;
+  const { listName, userId } = req.body;
 
   const { error } = await supabase
     .from("lists")
-    .insert([{ listName, userId, questions }]);
+    .insert([{ listName, userId, questions:[] }]);
 
   if (error) return res.status(400).json({ error: error.message });
 
@@ -268,9 +260,7 @@ app.delete("/deleteImage/:questionId", async (req, res) => {
   const { questionId } = req.params;
 
   const filePath = `questions/${questionId}.jpg`;
-  const { error } = await supabase.storage
-    .from(BUCKET_NAME)
-    .remove(filePath);
+  const { error } = await supabase.storage.from(BUCKET_NAME).remove(filePath);
 
   if (error) return res.status(400).json({ error: error.message });
 
