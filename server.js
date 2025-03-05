@@ -230,6 +230,17 @@ app.put("/lists/:listId", async (req, res) => {
   res.json("Edition happened successfully");
 });
 
+// Delete a list
+app.delete("/lists/:id", async (req, res) => {
+  const { id } = req.params;
+
+  const { error } = await supabase.from("lists").delete().eq("id", id);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json("Deleted Successfully");
+});
+
 app.put("/upload/:questionId", async (req, res) => {
   const { questionId } = req.params;
   const file = req.files?.image;
