@@ -174,11 +174,11 @@ app.delete("/questions/:id", async (req, res) => {
 
 // Create a list
 app.post("/lists", async (req, res) => {
-  const { listName, userId } = req.body;
-
+  const { listName, userId,description } = req.body;
+  const listDescription = description;
   const { error } = await supabase
     .from("lists")
-    .insert([{ listName, userId, questions:[] }]);
+    .insert([{ listName, userId, questions:[],description:listDescription }]);
 
   if (error) return res.status(400).json({ error: error.message });
 
@@ -217,17 +217,33 @@ app.post("/getLists", async (req, res) => {
 // Update a list
 app.put("/lists/:listId", async (req, res) => {
   const { listId } = req.params;
-  const { newListName, userId, questions } = req.body;
-
+  const { newListName, userId, questions,description } = req.body;
+  const listDescription = description;
   const { error } = await supabase
     .from("lists")
-    .update({ listName: newListName, questions })
+    .update({ listName: newListName, questions,description: listDescription})
     .eq("id", listId)
     .eq("userId", userId);
 
   if (error) return res.status(400).json({ error: error.message });
 
   res.json("Edition happened successfully");
+});
+
+// Search questions by content
+app.post("/searchLists/:listName", async (req, res) => {
+  const { listName } = req.params;
+  const { userId } = req.body;
+
+  const { data, error } = await supabase
+    .from("lists")
+    .select("*")
+    .eq("userId", userId)
+    .ilike("listName", `%${listName}%`);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json(data);
 });
 
 // Delete a list
