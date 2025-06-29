@@ -263,7 +263,6 @@ app.delete("/lists/:id", async (req, res) => {
 app.post("/getList/:listName", async (req, res) => {
   const {  userId } = req.body;
   const { listName} = req.params;
-  console.log(listName)
   const { data, error } = await supabase
     .from("lists")
     .select("*")
