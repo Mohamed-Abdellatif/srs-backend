@@ -258,6 +258,27 @@ app.delete("/lists/:id", async (req, res) => {
 
   res.json("Deleted Successfully");
 });
+
+
+app.post("/getList/:listName", async (req, res) => {
+  const {  userId } = req.body;
+  const { listName} = req.params;
+  console.log(listName)
+  const { data, error } = await supabase
+    .from("lists")
+    .select("*")
+    .eq("listName", listName)
+    .eq("userId", userId);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json(data);
+});
+
+
+
+
+
 //---------------------------------------------------------------
 //Public lists
 
@@ -301,6 +322,26 @@ app.post("/getPublicLists", async (req, res) => {
 
   res.json(data);
 });
+////////////
+
+app.post("/getPublicList/:listName", async (req, res) => {
+  const {  creatorId } = req.body;
+  const { listName} = req.params;
+
+  const { data, error } = await supabase
+    .from("publicLists")
+    .select("*")
+    .eq("listName", listName)
+    .eq("creatorId", creatorId);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json(data);
+});
+///////////
+
+
+
 // Get all lists for a creator
 app.post("/getPublicListsWithCreatorId", async (req, res) => {
   const { creatorId } = req.body;
@@ -411,6 +452,64 @@ app.get("/questionsImg/:questionId", async (req, res) => {
 app.get("/questionsImgDirect/:questionId", async (req, res) => {
   const { questionId } = req.params;
   const filePath = `questions/${questionId}.jpg`;
+
+  const { data, error } = await supabase.storage.from(BUCKET_NAME).download(filePath);
+
+  if (error || !data) {
+    return res.status(404).json({ error: "Image not found" });
+  }
+
+  res.setHeader("Content-Type", "image/jpeg");
+  res.send(Buffer.from(await data.arrayBuffer()));
+});
+///////////////////////////////////
+
+app.put("/uploadAsQuestion/:questionId", async (req, res) => {
+  const { questionId } = req.params;
+  const file = req.files?.image;
+
+  if (!file) return res.status(400).json({ error: "No image uploaded" });
+
+  const filePath = `questionsAsImages/${questionId}.jpg`;
+
+  const { error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .upload(filePath, file.data, {
+      contentType: file.mimetype,
+      upsert: true,
+    });
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json({ message: "Uploaded Successfully" });
+});
+app.delete("/deleteQuestionsAsImages/:questionId", async (req, res) => {
+  const { questionId } = req.params;
+
+  const filePath = `questionsAsImages/${questionId}.jpg`;
+  const { error } = await supabase.storage.from(BUCKET_NAME).remove(filePath);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json({ message: "Deleted Successfully" });
+});
+
+// Get question image URL
+app.get("/questionsAsImages/:questionId", async (req, res) => {
+  const { questionId } = req.params;
+  const filePath = `questionsAsImages/${questionId}.jpg`;
+
+  const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
+
+  if (!data.publicUrl)
+    return res.status(404).json({ error: "Image not found" });
+
+  res.json({ url: data.publicUrl });
+});
+
+app.get("/questionsAsImagesImgDirect/:questionId", async (req, res) => {
+  const { questionId } = req.params;
+  const filePath = `questionsAsImages/${questionId}.jpg`;
 
   const { data, error } = await supabase.storage.from(BUCKET_NAME).download(filePath);
 
