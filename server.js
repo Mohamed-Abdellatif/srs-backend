@@ -55,13 +55,10 @@ app.post("/getQuestionsById", async (req, res) => {
 });
 
 app.post("/getIds", async (req, res) => {
-  const { data, error } = await supabase
-    .from("questions")
-    .select("id")
-    
+  const { data, error } = await supabase.from("questions").select("id");
 
   if (error) return res.status(400).json({ error: error.message });
-  
+
   res.json(data);
 });
 
@@ -78,6 +75,24 @@ app.post("/getQuestions", async (req, res) => {
   if (error) return res.status(400).json({ error: error.message });
 
   res.json(data);
+});
+
+// Check whether user has this question
+app.post("/checkQuestionExistenceOnUser", async (req, res) => {
+  const { userId, question, answer } = req.body;
+  const { data, error } = await supabase
+    .from("questions")
+    .select("*")
+    .eq("userId", userId)
+    .eq("question", question)
+    .eq("answer", answer);
+
+  if (error) return res.status(400).json({ error: error.message });
+  if (data.length > 0) {
+    res.json(true);
+  } else {
+    res.json(false);
+  }
 });
 
 // Search questions by content
@@ -176,12 +191,17 @@ app.delete("/questions/:id", async (req, res) => {
 
 // Create a list
 app.post("/lists", async (req, res) => {
-  const { listName, userId,description,questions } = req.body;
-  const questionsList = questions?questions:[];
+  const { listName, userId, description, questions } = req.body;
+  const questionsList = questions ? questions : [];
   const listDescription = description;
-  const { error } = await supabase
-    .from("lists")
-    .insert([{ listName, userId, questions:questionsList,description:listDescription }]);
+  const { error } = await supabase.from("lists").insert([
+    {
+      listName,
+      userId,
+      questions: questionsList,
+      description: listDescription,
+    },
+  ]);
 
   if (error) return res.status(400).json({ error: error.message });
 
@@ -220,10 +240,10 @@ app.post("/getLists", async (req, res) => {
 // Update a list
 app.put("/lists/:listId", async (req, res) => {
   const { listId } = req.params;
-  const { newListName, userId, questions,description } = req.body;
+  const { newListName, userId, questions, description } = req.body;
   const { error } = await supabase
     .from("lists")
-    .update({ listName: newListName, questions,description})
+    .update({ listName: newListName, questions, description })
     .eq("id", listId)
     .eq("userId", userId);
 
@@ -259,10 +279,9 @@ app.delete("/lists/:id", async (req, res) => {
   res.json("Deleted Successfully");
 });
 
-
 app.post("/getList/:listName", async (req, res) => {
-  const {  userId } = req.body;
-  const { listName} = req.params;
+  const { userId } = req.body;
+  const { listName } = req.params;
   const { data, error } = await supabase
     .from("lists")
     .select("*")
@@ -274,21 +293,22 @@ app.post("/getList/:listName", async (req, res) => {
   res.json(data);
 });
 
-
-
-
-
 //---------------------------------------------------------------
 //Public lists
 
-
 // Create a list
 app.post("/publicLists", async (req, res) => {
-  const { listName, creatorId,description,creator } = req.body;
+  const { listName, creatorId, description, creator } = req.body;
   const listDescription = description;
-  const { error } = await supabase
-    .from("publicLists")
-    .insert([{ listName, creatorId, questions:[],description:listDescription,creator }]);
+  const { error } = await supabase.from("publicLists").insert([
+    {
+      listName,
+      creatorId,
+      questions: [],
+      description: listDescription,
+      creator,
+    },
+  ]);
 
   if (error) return res.status(400).json({ error: error.message });
 
@@ -302,8 +322,7 @@ app.post("/getPublicListQuestions", async (req, res) => {
   const { data, error } = await supabase
     .from("publicLists")
     .select("questions")
-    .eq("listName", listName)
-    
+    .eq("listName", listName);
 
   if (error) return res.status(400).json({ error: error.message });
 
@@ -312,10 +331,7 @@ app.post("/getPublicListQuestions", async (req, res) => {
 
 // Get all lists for a user
 app.post("/getPublicLists", async (req, res) => {
-
-  const { data, error } = await supabase
-    .from("publicLists")
-    .select("*")
+  const { data, error } = await supabase.from("publicLists").select("*");
 
   if (error) return res.status(400).json({ error: error.message });
 
@@ -324,8 +340,8 @@ app.post("/getPublicLists", async (req, res) => {
 ////////////
 
 app.post("/getPublicList/:listName", async (req, res) => {
-  const {  creatorId } = req.body;
-  const { listName} = req.params;
+  const { creatorId } = req.body;
+  const { listName } = req.params;
 
   const { data, error } = await supabase
     .from("publicLists")
@@ -338,8 +354,6 @@ app.post("/getPublicList/:listName", async (req, res) => {
   res.json(data);
 });
 ///////////
-
-
 
 // Get all lists for a creator
 app.post("/getPublicListsWithCreatorId", async (req, res) => {
@@ -358,10 +372,10 @@ app.post("/getPublicListsWithCreatorId", async (req, res) => {
 // Update a list
 app.put("/publicList/:listId", async (req, res) => {
   const { listId } = req.params;
-  const { newListName, creatorId, questions,description } = req.body;
+  const { newListName, creatorId, questions, description } = req.body;
   const { error } = await supabase
     .from("publicLists")
-    .update({ listName: newListName, questions,description})
+    .update({ listName: newListName, questions, description })
     .eq("id", listId)
     .eq("creatorId", creatorId);
 
@@ -394,7 +408,6 @@ app.delete("/publicLists/:id", async (req, res) => {
 
   res.json("Deleted Successfully");
 });
-
 
 //----------------------------------------------------------------
 
@@ -452,7 +465,9 @@ app.get("/questionsImgDirect/:questionId", async (req, res) => {
   const { questionId } = req.params;
   const filePath = `questions/${questionId}.jpg`;
 
-  const { data, error } = await supabase.storage.from(BUCKET_NAME).download(filePath);
+  const { data, error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .download(filePath);
 
   if (error || !data) {
     return res.status(404).json({ error: "Image not found" });
@@ -510,7 +525,9 @@ app.get("/questionsAsImagesImgDirect/:questionId", async (req, res) => {
   const { questionId } = req.params;
   const filePath = `questionsAsImages/${questionId}.jpg`;
 
-  const { data, error } = await supabase.storage.from(BUCKET_NAME).download(filePath);
+  const { data, error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .download(filePath);
 
   if (error || !data) {
     return res.status(404).json({ error: "Image not found" });
