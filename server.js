@@ -153,6 +153,17 @@ app.post("/questions", async (req, res) => {
     nextTest,
   } = req.body;
 
+
+  const { data: existing, error: findError } = await supabase
+    .from("questions")
+    .select("id")
+    .eq("userId", userId)
+    .eq("question", question)
+    .maybeSingle();
+
+  if (findError) return res.status(500).json({ error: findError.message });
+  if (existing) return res.status(200).json({ message: "Already exists" });
+
   const { data, error } = await supabase
     .from("questions")
     .insert(
@@ -167,9 +178,9 @@ app.post("/questions", async (req, res) => {
         questionType,
         choices,
       },
-      { returning: "representation" } // Ensures we get the inserted row
+      { returning: "representation" }
     )
-    .select("id"); // Retrieve the ID of the inserted row
+    .select("id");
 
   if (error) return res.status(400).json({ error: error.message });
 
