@@ -77,6 +77,19 @@ app.post("/getQuestions", async (req, res) => {
   res.json(data);
 });
 
+app.post("/getAllQuestions", async (req, res) => {
+  const { userId } = req.body;
+
+  const { data, error } = await supabase
+    .from("questions")
+    .select("*")
+    .eq("userId", userId);
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  res.json(data);
+});
+
 // Check whether user has this question
 app.post("/checkQuestionExistenceOnUser", async (req, res) => {
   const { userId, question, answer } = req.body;
@@ -152,7 +165,6 @@ app.post("/questions", async (req, res) => {
     created,
     nextTest,
   } = req.body;
-
 
   const { data: existing, error: findError } = await supabase
     .from("questions")
@@ -548,4 +560,4 @@ app.get("/questionsAsImagesImgDirect/:questionId", async (req, res) => {
   res.send(Buffer.from(await data.arrayBuffer()));
 });
 
-app.listen(3001, () => console.log("Server running on port 3001"));
+app.listen(3000, () => console.log("Server running on port 3001"));
